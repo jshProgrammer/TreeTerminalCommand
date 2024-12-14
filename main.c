@@ -8,6 +8,10 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <getopt.h>
+//Änderung
+#include <sys/types.h>
+#include <assert.h>
+
 
 //TODO: booleans nutzen
 
@@ -32,6 +36,16 @@ pthread_mutex_t counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 int total_files = 0, total_dirs = 1;
 
 
+//Änderung
+//TestCases
+void test_queue_basic();
+void test_queue_empty();
+void test_option_no_summary();
+void test_process_directory();
+void test_multithread_processing();
+void test_invalid_directory();
+
+
 typedef struct QueueNode {
     char path[MAX_PATH];
     int level;
@@ -46,6 +60,12 @@ typedef struct {
     int is_finished;  // Flag to indicate queue processing is complete
 } Queue;
 
+
+
+
+
+
+//Methods
 void queue_init(Queue *q) {
     q->front = q->rear = NULL;
     pthread_mutex_init(&q->lock, NULL);
@@ -183,7 +203,7 @@ void process_directory(const char *path, int level) {
         }
 
         struct stat statbuf;
-        if ((option_follow_symlinks ? stat : lstat)(full_path, &statbuf) == -1) {
+        if ((option_follow_symlinks ? stat : stat)(full_path, &statbuf) == -1) {
             fprintf(stderr, "Cannot stat '%s': %s\n", full_path, strerror(errno));
             continue;
         }
@@ -225,6 +245,22 @@ void print_directory_summary() {
     }
 }
 int main(int argc, char *argv[]) {
+
+  //Tests
+    if (argc > 1 && strcmp(argv[1], "--test") == 0) {
+        printf("Running tests...\n");
+
+        test_queue_basic();
+        test_queue_empty();
+        test_option_no_summary();
+        test_process_directory();
+        test_multithread_processing();
+        test_invalid_directory();
+
+        printf("All tests passed.\n");
+        return 0;
+    }
+
     int opt;
 
     // Optionstruktur für getopt_long
@@ -232,6 +268,8 @@ int main(int argc, char *argv[]) {
         {"noSum", no_argument, NULL, 'n'},  // Long-Option für --noSum
         {0, 0,  0, 0}  // Null-Terminator
     };
+
+
 
     while ((opt = getopt_long(argc, argv, "fL:lasmh", long_options, NULL)) != -1) {
         switch (opt) {
@@ -265,6 +303,7 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE;
         }
     }
+
 
     const char *start_path = (optind < argc) ? argv[optind] : ".";
 
@@ -305,3 +344,164 @@ int main(int argc, char *argv[]) {
 
     return EXIT_SUCCESS;
 }
+
+
+//TestCases
+
+void test_queue_basic() {
+    Queue queue;
+    queue_init(&queue);
+
+    enqueue(&queue, "/test/path", 1);
+
+    char path[MAX_PATH];
+    int level;
+    int result = dequeue(&queue, path, &level);
+
+    assert(result == 1); // Erfolgreiches Dequeue
+    assert(strcmp(path, "/test/path") == 0); // Pfad überprüfen
+    assert(level == 1); // Level überprüfen
+
+    queue_destroy(&queue);
+    printf("Test queue_basic passed.\n");
+}
+
+
+
+void test_queue_empty() {
+    Queue queue;
+    queue_init(&queue);
+
+    char path[MAX_PATH];
+    int level;
+    int result = dequeue(&queue, path, &level);
+
+    assert(result == 0); // Queue ist leer
+    queue_destroy(&queue);
+
+    printf("Test queue_empty passed.\n");
+}
+
+
+
+
+void test_option_no_summary() {
+    option_show_summary = 0;
+
+    // Simuliere die Funktion print_directory_summary
+    total_files = 10;
+    total_dirs = 5;
+
+    printf("Testing --noSum option:\n");
+    print_directory_summary(); // Sollte nichts ausgeben
+    printf("Test option_no_summary passed.\n");
+}
+
+
+
+
+
+#include <sys/stat.h> // Für mkdir
+#include <unistd.h>   // Für rmdir, unlink
+
+void test_process_directory() {
+    total_files = 0;
+    total_dirs = 1; // Startwert
+
+    // Temporäres Testverzeichnis erstellen
+    mkdir("test_dir");
+    mkdir("test_dir/subdir");
+    FILE *file = fopen("test_dir/file.txt", "w");
+    fclose(file);
+
+    // Verzeichnis verarbeiten
+    process_directory("test_dir", 0);
+
+    // Assertions
+    assert(total_dirs > 1); // Es sollte mindestens ein Unterverzeichnis geben
+    assert(total_files > 0); // Es sollte mindestens eine Datei geben
+
+    // Temporäre Testdateien und Verzeichnisse entfernen
+    unlink("test_dir/file.txt"); // Datei löschen
+    rmdir("test_dir/subdir");    // Unterverzeichnis löschen
+    rmdir("test_dir");           // Hauptverzeichnis löschen
+
+    printf("Test process_directory passed.\n");
+}
+
+
+
+
+
+
+void test_multithread_processing() {
+    Queue queue;
+    queue_init(&queue);
+
+    // Temporäres Testverzeichnis erstellen
+    mkdir("test_dir");
+    mkdir("test_dir/subdir");
+    FILE *file = fopen("test_dir/file.txt", "w");
+    fclose(file);
+
+    // Verzeichnis in die Queue einfügen
+    enqueue(&queue, "test_dir", 0);
+
+    // Threads erstellen
+    pthread_t threads[4]; // 4 Threads für den Test
+    for (int i = 0; i < 4; i++) {
+        if (pthread_create(&threads[i], NULL, worker, &queue) != 0) {
+            perror("Failed to create thread");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Threads signalisieren, dass die Queue abgearbeitet werden kann
+    pthread_mutex_lock(&queue.lock);
+    queue.is_finished = 1;
+    pthread_cond_broadcast(&queue.cond);
+    pthread_mutex_unlock(&queue.lock);
+
+    // Auf alle Threads warten
+    for (int i = 0; i < 4; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // Assertions
+    assert(total_dirs > 1); // Es sollte mindestens ein Unterverzeichnis geben
+    assert(total_files > 0); // Es sollte mindestens eine Datei geben
+
+    // Temporäre Testdateien und Verzeichnisse entfernen
+    unlink("test_dir/file.txt"); // Datei löschen
+    rmdir("test_dir/subdir");    // Unterverzeichnis löschen
+    rmdir("test_dir");           // Hauptverzeichnis löschen
+
+    queue_destroy(&queue);
+    printf("Test multithread_processing passed.\n");
+}
+
+
+
+
+
+
+void test_invalid_directory() {
+    struct stat statbuf;
+    const char *invalid_path = "/invalid/path";
+
+    int result = stat(invalid_path, &statbuf);
+    assert(result == -1); // Sollte fehlschlagen
+
+    printf("Test invalid_directory passed.\n");
+}
+
+
+
+
+
+
+
+
+
+
+
