@@ -422,6 +422,10 @@ int main(int argc, char *argv[]) {
 
 
     while ((opt = getopt_long(argc, argv, "fL:lasdritugpPo:Fh", long_options, NULL)) != -1) {
+        if (opt == 0) {
+            // Optionen mit Flags wurden gesetzt, überspringe den switch
+            continue;
+        }
         switch (opt) {
             case 'f':
                 option_show_full_path = 1;
@@ -507,8 +511,6 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
         fclose(file);
-    } else {
-        printf("No output file specified");
     }
 
     const char *start_path = (optind < argc) ? argv[optind] : ".";
