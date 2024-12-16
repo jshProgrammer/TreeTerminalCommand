@@ -8,10 +8,10 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <getopt.h>
-//Änderung
 #include <sys/types.h>
 #include <assert.h>
-
+#include <pwd.h>   // Für Benutzernamen (UID zu Username)
+#include <grp.h>   // Für Gruppennamen (GID zu Groupname)
 
 //TODO: booleans nutzen
 
@@ -20,7 +20,10 @@
 
 #define MAX_PATH 1024
 #define MAX_INDENT 128
-#define MAX_THREADS 16  // Anzahl der Threads
+#define MAX_THREADS 16  // Amount of threads
+#define MAX_PRUNED_DIRS 16
+char *pruned_directories[MAX_PRUNED_DIRS]; // Array to store pruned directories
+int pruned_dir_count = 0;
 
 // Globale Optionen
 int option_show_full_path = 0;
@@ -29,8 +32,19 @@ int option_follow_symlinks = 0;
 int option_show_hidden = 0;
 int option_show_file_sizes = 0;
 int option_show_summary = 1;
+int option_dirs_first = 0;
+int option_reverse_sort = 0;
+int option_dirs_only = 0;
+int option_ignore_case = 0;
+int option_file_limit = -1;
+int option_sort_time = 0;
+int option_output_json = 0;
+int option_output_csv = 0;
+int option_show_user = 0;
+int option_show_group = 0;
+char *output_file = NULL;
 
-// as ursprüngliches tree Kommando zählt auch das aktuelle Verzeichnis, daher beginnt diese Variable mit 1
+// als ursprüngliches tree Kommando zählt auch das aktuelle Verzeichnis, daher beginnt diese Variable mit 1
 // Synchronized counters
 pthread_mutex_t counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 int total_files = 0, total_dirs = 1;
@@ -44,7 +58,47 @@ void test_option_no_summary();
 void test_process_directory();
 void test_multithread_processing();
 void test_invalid_directory();
+void test_prune_directory();
 
+
+int compare_entries(const struct dirent **a, const struct dirent **b) {
+    if (option_dirs_first) {
+        int is_dir_a = (*a)->d_type == DT_DIR;
+        int is_dir_b = (*b)->d_type == DT_DIR;
+        if (is_dir_a != is_dir_b) {
+            return is_dir_b - is_dir_a; // Verzeichnisse zuerst
+        }
+    }
+    if (option_sort_time) {
+        struct stat stat_a, stat_b;
+        stat((*a)->d_name, &stat_a);
+        stat((*b)->d_name, &stat_b);
+        return option_reverse_sort ? stat_b.st_mtime - stat_a.st_mtime : stat_a.st_mtime - stat_b.st_mtime;
+    }
+    return option_reverse_sort ? strcasecmp((*b)->d_name, (*a)->d_name) : strcasecmp((*a)->d_name, (*b)->d_name);
+}
+
+//TODO: vlt. hier noch als Parameter zstl den Dateinamen hinzufügen?
+void output_to_file(const char *path, const struct stat *statbuf, int level) {
+    if (output_file != NULL) {
+        FILE *file = fopen(output_file, "a");  // Im Anhängemodus öffnen
+        if (!file) {
+            perror("Failed to open output file");
+            exit(EXIT_FAILURE);
+        }
+
+        // Ausgabe im gewünschten Format
+        if (option_output_json) {
+            fprintf(file, "{\"path\": \"%s\", \"size\": %ld, \"level\": %d}\n", path, statbuf->st_size, level);
+        } else if (option_output_csv) {
+            fprintf(file, "%s,%ld,%d\n", path, statbuf->st_size, level);
+        } else {
+            fprintf(file, "%s\n", path);  // Normale Ausgabe im Textformat
+        }
+
+        fclose(file);
+    }
+}
 
 typedef struct QueueNode {
     char path[MAX_PATH];
@@ -61,11 +115,6 @@ typedef struct {
 } Queue;
 
 
-
-
-
-
-//Methods
 void queue_init(Queue *q) {
     q->front = q->rear = NULL;
     pthread_mutex_init(&q->lock, NULL);
@@ -148,6 +197,20 @@ void print_usage(const char *program_name) {
     printf("  -a            Show hidden files\n");
     printf("  -s            Show file sizes\n");
     printf("  --noSum       Show no summary :)\n");
+    printf("  -d            List directories only\n");
+    printf("  --dirsfirst   List directories before files\n");
+    printf("  -r            Sort output in reverse order\n");
+    printf("  -i            Ignore case when sorting\n");
+    printf("  -t            Sort by last modification time\n");
+    printf("  -u            Show user name or UID if no name is available\n");
+    printf("  -g            Show group name or GID if no name is available\n");
+    printf("  -p <dir>      Prune (omit) specified directory from the tree\n");
+    printf("  --prune <dir> Prune (omit) specified directory from the tree\n");
+    printf("  --filelimit # Limit descending into directories with more than # entries\n");
+    //TODO: hier vermutlich noch <file> ergänzen
+    printf("  --output-json Output result in JSON format\n");
+    printf("  --output-csv  Output result in CSV format\n");
+    printf("  -o <file>     Send output to file\n");
     printf("  -h            Show this help message\n");
 }
 
@@ -176,6 +239,13 @@ void increment_counters(bool is_dir) {
 }
 
 void process_directory(const char *path, int level) {
+    // Check if directory should be pruned => then skip this directory
+    for (int i = 0; i < pruned_dir_count; i++) {
+        if (strcmp(path, pruned_directories[i]) == 0) {
+            return;
+        }
+    }
+
     if (option_max_depth != -1 && level > option_max_depth) {
         return;
     }
@@ -186,8 +256,44 @@ void process_directory(const char *path, int level) {
         return;
     }
 
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
+    // Nutze scandir für optionales Sortieren der Einträge
+    struct dirent **entries;
+    int count = scandir(path, &entries, NULL, compare_entries); // compare_entries nutzt option_dirs_first, option_reverse_sort usw.
+    if (count < 0) {
+        fprintf(stderr, "Error scanning directory '%s': %s\n", path, strerror(errno));
+        closedir(dir);
+        return;
+    }
+
+    if(option_file_limit != -1) {
+        //TODO: gibt es eine effizientere Methode als hier nochmal mit for wirklich durchzuloopen?
+        int file_count = 0;
+        for (int i = 0; i < count; i++) {
+            struct dirent *entry = entries[i];
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                char full_path[MAX_PATH];
+                if (snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name) < MAX_PATH) {
+                    struct stat statbuf;
+                    if ((option_follow_symlinks ? stat : lstat)(full_path, &statbuf) == 0) {
+                        if (!S_ISDIR(statbuf.st_mode)) {
+                            file_count++;
+                        }
+                    }
+                }
+            }
+            // Wenn  Anzahl der Dateien das Limit überschreitet => überspringe das Verzeichnis
+            if (file_count > option_file_limit) {
+                printf("Skipping directory '%s' due to file limit (%d files)\n", path, file_count);
+                closedir(dir);
+                return;
+            }
+        }
+
+    }
+
+
+    for (int i = 0; i < count; i++) {
+        struct dirent *entry = entries[i];
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
@@ -208,10 +314,41 @@ void process_directory(const char *path, int level) {
             continue;
         }
 
+        if (output_file != NULL) {
+            output_to_file(full_path, &statbuf, level);
+        }
+
         print_indentation(level);
         printf("|-- %s", option_show_full_path ? full_path : entry->d_name);
 
         print_file_info(full_path, &statbuf);
+
+        if (option_show_user || option_show_group) {
+            printf(" [");
+
+            if (option_show_user) {
+                struct passwd *pwd = getpwuid(statbuf.st_uid);
+                if (pwd) {
+                    printf("User: %s", pwd->pw_name);
+                } else {
+                    printf("User: %d", statbuf.st_uid); // UID, falls kein Username verfügbar
+                }
+            }
+
+            if (option_show_group) {
+                if (option_show_user) {
+                    printf(", "); // Trennzeichen, falls beide Optionen aktiv sind
+                }
+                struct group *grp = getgrgid(statbuf.st_gid);
+                if (grp) {
+                    printf("Group: %s", grp->gr_name);
+                } else {
+                    printf("Group: %d", statbuf.st_gid); // GID, falls kein Gruppenname verfügbar
+                }
+            }
+
+            printf("]");
+        }
 
         if (S_ISDIR(statbuf.st_mode)) {
             increment_counters(true);
@@ -256,6 +393,7 @@ int main(int argc, char *argv[]) {
         test_process_directory();
         test_multithread_processing();
         test_invalid_directory();
+        test_prune_directory();
 
         printf("All tests passed.\n");
         return 0;
@@ -263,15 +401,27 @@ int main(int argc, char *argv[]) {
 
     int opt;
 
+    //TODO: option ignoreCase noch ungenutzt
+
+    //TODO: output-json und output-csv noch ohne Funktion
+
+    //TODO: noch umsetzen: -I | Do not list those files that match the wild-card pattern.
+
+
     // Optionstruktur für getopt_long
     static struct option long_options[] = {
-        {"noSum", no_argument, NULL, 'n'},  // Long-Option für --noSum
-        {0, 0,  0, 0}  // Null-Terminator
+        {"noSum", no_argument, &option_show_summary, 0},  // Long-Option für --noSum
+        {"dirsfirst", no_argument, &option_dirs_first, 1},
+        {"output-json", no_argument, &option_output_json, 1},
+        {"output-csv", no_argument, &option_output_csv, 1},
+        {"filelimit", required_argument, NULL, 'F'},
+        {"prune", no_argument, NULL, 'P'},
+        {0, 0, 0, 0}
     };
 
 
 
-    while ((opt = getopt_long(argc, argv, "fL:lasmh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "fL:lasdritugpPo:Fh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'f':
                 option_show_full_path = 1;
@@ -292,8 +442,54 @@ int main(int argc, char *argv[]) {
             case 's':
                 option_show_file_sizes = 1;
                 break;
-            case 'n':  // Wenn --noSum erkannt wird
-                option_show_summary = 0;
+            case 'd':
+                option_dirs_only = 1;
+            break;
+            case 'r':
+                option_reverse_sort = 1;
+            break;
+            case 'i':
+                option_ignore_case = 1;
+            break;
+            case 't':
+                option_sort_time = 1;
+            break;
+            case 'u':
+                option_show_user = 1;
+            break;
+            case 'g':
+                option_show_group = 1;
+            break;
+            //TODO: add example (./main --prune ./cmake-build-debug) in readme
+            case 'p':
+            case 'P':  // Long option (--prune)
+                if (pruned_dir_count < MAX_PRUNED_DIRS) {
+                    // Ensure the path is not NULL and not an empty string
+                    if (optarg != NULL && strlen(optarg) > 0) {
+                        // Use realpath to resolve relative paths to absolute paths
+                        char resolved_path[MAX_PATH];
+                        if (realpath(optarg, resolved_path) != NULL) {
+                            pruned_directories[pruned_dir_count++] = strdup(resolved_path);
+                        } else {
+                            fprintf(stderr, "Error resolving path: %s\n", optarg);
+                        }
+                    } else {
+                        fprintf(stderr, "Invalid directory path for prune option\n");
+                    }
+                } else {
+                    fprintf(stderr, "Maximum number of pruned directories reached.\n");
+                }
+                break;
+            //TODO: add example (./main -o output.txt .) in readme
+            case 'o':
+                if (optarg == NULL) {
+                    fprintf(stderr, "Option -o requires an argument\n");
+                    exit(EXIT_FAILURE);
+                }
+            output_file = optarg;
+                break;
+            case 'F':
+                option_file_limit = atoi(optarg);
                 break;
             case 'h':
                 print_usage(argv[0]);
@@ -304,6 +500,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (output_file != NULL) { // Ausgabedatei erstellen/öffnen
+        FILE *file = fopen(output_file, "w");
+        if (file == NULL) {
+            perror("Error creating output file");
+            exit(EXIT_FAILURE);
+        }
+        fclose(file);
+    } else {
+        printf("No output file specified");
+    }
 
     const char *start_path = (optind < argc) ? argv[optind] : ".";
 
@@ -342,11 +548,18 @@ int main(int argc, char *argv[]) {
 
     print_directory_summary();
 
+    // free memory for pruned directories before exit
+    for (int i = 0; i < pruned_dir_count; i++) {
+        free(pruned_directories[i]);
+    }
+
     return EXIT_SUCCESS;
 }
 
 
 //TestCases
+//TODO: add test cases for all terminal options
+//TODO: bei Tests benötigen wir noch free
 
 void test_queue_basic() {
     Queue queue;
@@ -409,8 +622,8 @@ void test_process_directory() {
     total_dirs = 1; // Startwert
 
     // Temporäres Testverzeichnis erstellen
-    mkdir("test_dir");
-    mkdir("test_dir/subdir");
+    mkdir("test_dir", 0777);
+    mkdir("test_dir/subdir", 0777);
     FILE *file = fopen("test_dir/file.txt", "w");
     fclose(file);
 
@@ -429,18 +642,13 @@ void test_process_directory() {
     printf("Test process_directory passed.\n");
 }
 
-
-
-
-
-
 void test_multithread_processing() {
     Queue queue;
     queue_init(&queue);
 
     // Temporäres Testverzeichnis erstellen
-    mkdir("test_dir");
-    mkdir("test_dir/subdir");
+    mkdir("test_dir", 0777); // 0777 for full access
+    mkdir("test_dir/subdir", 0777);
     FILE *file = fopen("test_dir/file.txt", "w");
     fclose(file);
 
@@ -480,11 +688,6 @@ void test_multithread_processing() {
     printf("Test multithread_processing passed.\n");
 }
 
-
-
-
-
-
 void test_invalid_directory() {
     struct stat statbuf;
     const char *invalid_path = "/invalid/path";
@@ -495,13 +698,30 @@ void test_invalid_directory() {
     printf("Test invalid_directory passed.\n");
 }
 
+void test_prune_directory() {
+    mkdir("test_prune_dir", 0777);
+    mkdir("test_prune_dir/subdir1", 0777);
+    mkdir("test_prune_dir/subdir2", 0777);
+    FILE *file = fopen("test_prune_dir/file.txt", "w");
+    fclose(file);
 
+    pruned_directories[0] = strdup("test_prune_dir/subdir1");
+    pruned_dir_count = 1;
 
+    total_files = 0;
+    total_dirs = 1;
+    process_directory("test_prune_dir", 0);
 
+    assert(total_dirs == 2);
+    assert(total_files == 1);
 
+    unlink("test_prune_dir/file.txt");
+    rmdir("test_prune_dir/subdir1");
+    rmdir("test_prune_dir/subdir2");
+    rmdir("test_prune_dir");
 
+    free(pruned_directories[0]);
+    pruned_dir_count = 0;
 
-
-
-
-
+    printf("Test prune_directory passed.\n");
+}
