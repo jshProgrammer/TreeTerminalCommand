@@ -185,3 +185,13 @@ void test_prune_directory() {
 
     printf("Test prune_directory passed.\n");
 }
+
+void run_tests() {
+    test_queue_basic();
+    test_queue_empty();
+    test_option_no_summary();
+    test_process_directory();
+    test_multithread_processing();
+    test_invalid_directory();
+    test_prune_directory();
+}

@@ -1,5 +1,6 @@
 #ifndef LOGIC_H
 #define LOGIC_H
+#include <stdbool.h>
 
 int compare_entries(const struct dirent **a, const struct dirent **b);
 void output_to_file(const char *path, const struct stat *statbuf, int level);
