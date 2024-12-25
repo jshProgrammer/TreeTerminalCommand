@@ -115,6 +115,45 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             //TODO: add example (./main -o output.txt .) in readme
+            case 'output-json':
+                TreeNode *root = build_tree(realpath, 0);
+                if (!root) {
+                    fprintf(stderr, "Failed to build tree.\n");
+                }
+
+
+                FILE *file = output_file ? fopen(output_file, "w") : stdout;
+                if (!file) {
+                    perror("Error opening output file");
+                    free_tree(root);
+                }
+
+                generate_json_output(file, root);
+
+                if (output_file) {
+                    fclose(file);
+                }
+
+                free_tree(root);
+
+            case 'output-csv':
+                if (!root) {
+                    fprintf(stderr, "Failed to build tree.\n");
+                }
+
+                if (!file) {
+                    perror("Error opening output file");
+                    free_tree(root);
+                }
+
+                generate_csv_output(file, root);
+
+                if (output_file) {
+                    fclose(file);
+                }
+
+                free_tree(root);
+
             case 'o':
                 if (optarg == NULL) {
                     fprintf(stderr, "Option -o requires an argument\n");

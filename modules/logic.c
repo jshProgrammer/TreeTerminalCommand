@@ -32,26 +32,112 @@ int compare_entries(const struct dirent **a, const struct dirent **b) {
     return option_reverse_sort ? strcasecmp((*b)->d_name, (*a)->d_name) : strcasecmp((*a)->d_name, (*b)->d_name);
 }
 
-//TODO: vlt. hier noch als Parameter zstl den Dateinamen hinzufügen?
-void output_to_file(const char *path, const struct stat *statbuf, int level) {
-    if (output_file != NULL) {
-        FILE *file = fopen(output_file, "a");  // Im Anhängemodus öffnen
-        if (!file) {
-            perror("Failed to open output file");
-            exit(EXIT_FAILURE);
+void generate_json_output(FILE *file, TreeNode *node) {
+     fprintf(file, "{\n");
+    fprintf(file, "\"name\": \"%s\",\n", node->name);
+    fprintf(file, "\"size\": %ld,\n", node->size);
+    fprintf(file, "\"is_dir\": %s,\n", node->is_dir ? "true" : "false");
+    fprintf(file, "\"children\": [");
+
+    for (int i = 0; i < node->child_count; ++i) {
+        generate_json_output(file, node->children[i]);
+        if (i < node->child_count - 1) {
+            fprintf(file, ",");
+        }
+    }
+
+    fprintf(file, "]\n");
+    fprintf(file, "}");
+}
+
+void generate_csv_output(FILE *file, TreeNode *node) {
+   fprintf(file, "\"%s\",%ld,%d,%s\n", node->name, node->size, node->level, node->is_dir ? "directory" : "file");
+
+    for (int i = 0; i < node->child_count; ++i) {
+        generate_csv_output(file, node->children[i]);
+    }
+}
+
+TreeNode *build_tree(const char *path, int level) {
+    struct stat statbuf;
+    if (stat(path, &statbuf) == -1) {
+        fprintf(stderr, "Cannot stat '%s': %s\n", path, strerror(errno));
+        return NULL;
+    }
+
+    TreeNode *node = create_node(path, statbuf.st_size, level, S_ISDIR(statbuf.st_mode));
+
+    if (S_ISDIR(statbuf.st_mode)) {
+        DIR *dir = opendir(path);
+        if (!dir) {
+            fprintf(stderr, "Cannot open directory '%s': %s\n", path, strerror(errno));
+            return node;
         }
 
-        // Ausgabe im gewünschten Format
-        if (option_output_json) {
-            fprintf(file, "{\"path\": \"%s\", \"size\": %ld, \"level\": %d}\n", path, statbuf->st_size, level);
-        } else if (option_output_csv) {
-            fprintf(file, "%s,%ld,%d\n", path, statbuf->st_size, level);
-        } else {
-            fprintf(file, "%s\n", path);  // Normale Ausgabe im Textformat
-        }
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
 
+            char full_path[max_path];
+            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+
+            TreeNode *child = build_tree(full_path, level + 1);
+            if (child) {
+                add_child(node, child);
+            }
+        }
+        closedir(dir);
+    }
+
+    return node;
+}
+
+void output_to_file_json_csv(TreeNode *root) {
+    if (!root) {
+        fprintf(stderr, "Error: Tree root is NULL.\n");
+        return;
+    }
+
+    FILE *file = output_file ? fopen(output_file, "w") : stdout;
+    if (!file) {
+        perror("Error opening output file");
+        return;
+    }
+
+    if (option_output_json) {
+        generate_json_output(file, root);
+    } else if (option_output_csv) {
+        // Write CSV header
+        fprintf(file, "\"Name\",\"Size\",\"Level\",\"Type\"\n");
+        generate_csv_output(file, root);
+    } else {
+        fprintf(stderr, "No valid output format selected.\n");
+    }
+
+    if (output_file) {
         fclose(file);
     }
+}
+
+
+
+//TODO: vlt. hier noch als Parameter zstl den Dateinamen hinzufügen?
+void output_to_file(const char *path, const struct stat *statbuf, int level) {
+
+        if (output_file != NULL) {
+            FILE *file = fopen(output_file, "a");
+            if (!file) {
+                perror("Failed to open output file");
+                exit(EXIT_FAILURE);
+            }
+            fprintf(file, "%s\n", path);
+            fclose(file);
+        } else {
+            printf("%s\n", path);
+        }
+
 }
 
 void print_usage(const char *program_name) {
