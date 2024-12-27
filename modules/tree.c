@@ -21,6 +21,7 @@ void add_child(TreeNode *parent, TreeNode *child) {
 }
 
 void free_tree(TreeNode *node) {
+    if (!node) return;
     for (int i = 0; i < node->child_count; ++i) {
         free_tree(node->children[i]);
     }

@@ -13,6 +13,7 @@
 #include "h-Files/globals.h"
 #include "h-Files/queue.h"
 #include "h-Files/logic.h"
+#include "h-Files/tree.h"
 
 
 int compare_entries(const struct dirent **a, const struct dirent **b) {
@@ -32,21 +33,50 @@ int compare_entries(const struct dirent **a, const struct dirent **b) {
     return option_reverse_sort ? strcasecmp((*b)->d_name, (*a)->d_name) : strcasecmp((*a)->d_name, (*b)->d_name);
 }
 
-void generate_json_output(FILE *file, TreeNode *node) {
-     fprintf(file, "{\n");
+//TODO: use together with print_indentation method below => generalise
+void print_indents_in_file(FILE *file, int indent) {
+    for (int i = 0; i < indent; ++i) {
+        fprintf(file, "    "); // 4 Leerzeichen pro Ebene
+    }
+}
+
+void generate_json_output(FILE *file, TreeNode *node, int indent) {
+    print_indents_in_file(file, indent);
+    if(indent == 0) fprintf(file, "{\n");
+    else {
+        fprintf(file, "\n");
+        print_indents_in_file(file, indent);
+        fprintf(file, "{\n");
+    }
+
+    print_indents_in_file(file, indent+1);
     fprintf(file, "\"name\": \"%s\",\n", node->name);
+
+    print_indents_in_file(file, indent+1);
     fprintf(file, "\"size\": %ld,\n", node->size);
+
+    print_indents_in_file(file, indent+1);
     fprintf(file, "\"is_dir\": %s,\n", node->is_dir ? "true" : "false");
-    fprintf(file, "\"children\": [");
+
+    print_indents_in_file(file, indent+1);
+    fprintf(file, "\"children\": [\n");
 
     for (int i = 0; i < node->child_count; ++i) {
-        generate_json_output(file, node->children[i]);
+        generate_json_output(file, node->children[i], indent+2);
         if (i < node->child_count - 1) {
             fprintf(file, ",");
         }
     }
 
+    if (node->child_count > 0) {
+        fprintf(file, "\n"); // Neue Zeile nach der letzten Kinderausgabe
+        print_indents_in_file(file, indent + 1);
+    }
+
+    print_indents_in_file(file, indent+1);
     fprintf(file, "]\n");
+
+    print_indents_in_file(file, indent);
     fprintf(file, "}");
 }
 
@@ -58,6 +88,7 @@ void generate_csv_output(FILE *file, TreeNode *node) {
     }
 }
 
+//TODO: prüfen, ob man wirklich nochmal extra alles durch iterieren muss oder ob man das in processDirectory inkludieren kann
 TreeNode *build_tree(const char *path, int level) {
     struct stat statbuf;
     if (stat(path, &statbuf) == -1) {
@@ -67,7 +98,7 @@ TreeNode *build_tree(const char *path, int level) {
 
     TreeNode *node = create_node(path, statbuf.st_size, level, S_ISDIR(statbuf.st_mode));
 
-    if (S_ISDIR(statbuf.st_mode)) {
+    if (node->is_dir) {
         DIR *dir = opendir(path);
         if (!dir) {
             fprintf(stderr, "Cannot open directory '%s': %s\n", path, strerror(errno));
@@ -107,7 +138,7 @@ void output_to_file_json_csv(TreeNode *root) {
     }
 
     if (option_output_json) {
-        generate_json_output(file, root);
+        generate_json_output(file, root, 0);
     } else if (option_output_csv) {
         // Write CSV header
         fprintf(file, "\"Name\",\"Size\",\"Level\",\"Type\"\n");

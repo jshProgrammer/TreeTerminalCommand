@@ -8,18 +8,21 @@
 #include <getopt.h>
 #include <sys/types.h>
 
+
 #include "modules/h-Files/globals.h"
 #include "modules/h-Files/queue.h"
 #include "modules/h-Files/logic.h"
 #include "modules/h-Files/tests.h"
+#include "modules/h-Files/tree.h"
 
 
 //TODO: Braum Fragen => sollen wir Segmentierung nutzen von Queue zu Teilqueues bei den Threads, damit diese nicht die komplette Queue blockieren
 // oder sollten wir hier darauf verzichten, weil enqueue/dequeue ja eh nicht lange dauert im Vergleich zu Auslesen des Dateisystems
 
-int main(int argc, char *argv[]) {
+//TODO: in ReadMe: gcc main.c modules/logic.c modules/tree.c modules/queue.c modules/tests.c modules/globals.c -o TreeTerminalCommand
 
-  //Tests
+int main(int argc, char *argv[]) {
+    //Tests
     if (argc > 1 && strcmp(argv[1], "--test") == 0) {
         printf("Running tests...\n");
 
@@ -42,16 +45,17 @@ int main(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"noSum", no_argument, &option_show_summary, 0},  // Long-Option für --noSum
         {"dirsfirst", no_argument, &option_dirs_first, 1},
-        {"output-json", no_argument, &option_output_json, 1},
-        {"output-csv", no_argument, &option_output_csv, 1},
+        {"output-json", required_argument, NULL, 'j'},
+        {"output-csv", required_argument, NULL, 'c'},
         {"filelimit", required_argument, NULL, 'F'},
         {"prune", no_argument, NULL, 'P'},
         {0, 0, 0, 0}
     };
 
+    const char *start_path = (optind < argc) ? argv[optind] : ".";
 
 
-    while ((opt = getopt_long(argc, argv, "fL:lasdritugpPo:Fh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "fL:lasdritugpPj:c:o:Fh", long_options, NULL)) != -1) {
         if (opt == 0) {
             // Optionen mit Flags wurden gesetzt, überspringe den switch
             continue;
@@ -59,23 +63,23 @@ int main(int argc, char *argv[]) {
         switch (opt) {
             case 'f':
                 option_show_full_path = 1;
-                break;
+            break;
             case 'L':
                 option_max_depth = atoi(optarg);
-                if (option_max_depth < 0) {
-                    fprintf(stderr, "Invalid depth value: %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
+            if (option_max_depth < 0) {
+                fprintf(stderr, "Invalid depth value: %s\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
             case 'l':
                 option_follow_symlinks = 1;
-                break;
+            break;
             case 'a':
                 option_show_hidden = 1;
-                break;
+            break;
             case 's':
                 option_show_file_sizes = 1;
-                break;
+            break;
             case 'd':
                 option_dirs_only = 1;
             break;
@@ -113,63 +117,40 @@ int main(int argc, char *argv[]) {
                 } else {
                     fprintf(stderr, "Maximum number of pruned directories reached.\n");
                 }
-                break;
+            break;
+            case 'j':
+                option_output_json = 1;
+            if (optarg == NULL) {
+                fprintf(stderr, "Option --output-json requires an argument\n");
+                exit(EXIT_FAILURE);
+            }
+            output_file = optarg;
+            break;
+            case 'c':
+                option_output_csv = 1;
+            if (optarg == NULL) {
+                fprintf(stderr, "Option --output-csv requires an argument\n");
+                exit(EXIT_FAILURE);
+            }
+            output_file = optarg;
+            break;
             //TODO: add example (./main -o output.txt .) in readme
-            case 'output-json':
-                TreeNode *root = build_tree(realpath, 0);
-                if (!root) {
-                    fprintf(stderr, "Failed to build tree.\n");
-                }
-
-
-                FILE *file = output_file ? fopen(output_file, "w") : stdout;
-                if (!file) {
-                    perror("Error opening output file");
-                    free_tree(root);
-                }
-
-                generate_json_output(file, root);
-
-                if (output_file) {
-                    fclose(file);
-                }
-
-                free_tree(root);
-
-            case 'output-csv':
-                if (!root) {
-                    fprintf(stderr, "Failed to build tree.\n");
-                }
-
-                if (!file) {
-                    perror("Error opening output file");
-                    free_tree(root);
-                }
-
-                generate_csv_output(file, root);
-
-                if (output_file) {
-                    fclose(file);
-                }
-
-                free_tree(root);
-
             case 'o':
                 if (optarg == NULL) {
                     fprintf(stderr, "Option -o requires an argument\n");
                     exit(EXIT_FAILURE);
                 }
             output_file = optarg;
-                break;
+            break;
             case 'F':
                 option_file_limit = atoi(optarg);
-                break;
+            break;
             case 'h':
                 print_usage(argv[0]);
-                return EXIT_SUCCESS;
+            return EXIT_SUCCESS;
             default:
                 print_usage(argv[0]);
-                return EXIT_FAILURE;
+            return EXIT_FAILURE;
         }
     }
 
@@ -182,7 +163,12 @@ int main(int argc, char *argv[]) {
         fclose(file);
     }
 
-    const char *start_path = (optind < argc) ? argv[optind] : ".";
+    // Überprüfen, ob ein Startpfad angegeben ist
+    if (optind < argc) {
+        start_path = argv[optind];
+    } else {
+        start_path = "."; // Standardmäßig aktuelles Verzeichnis
+    }
 
     struct stat statbuf;
     if (stat(start_path, &statbuf) == -1 || !S_ISDIR(statbuf.st_mode)) {
@@ -222,6 +208,26 @@ int main(int argc, char *argv[]) {
     // free memory for pruned directories before exit
     for (int i = 0; i < pruned_dir_count; i++) {
         free(pruned_directories[i]);
+    }
+
+    // Baum erstellen und Ausgabe generieren
+    TreeNode *root = NULL;
+
+    if (option_output_json || option_output_csv) {
+        root = build_tree(".", 0);
+        if (!root) {
+            fprintf(stderr, "Failed to build tree.\n");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (option_output_json) {
+        FILE *file = fopen(output_file, "w");
+        generate_json_output(file, root, 0);
+    }
+    if (option_output_csv) {
+        FILE *file = fopen(output_file, "w");
+        generate_csv_output(file, root);
     }
 
     return EXIT_SUCCESS;
