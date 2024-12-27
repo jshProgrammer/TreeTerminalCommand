@@ -5,10 +5,10 @@
 #include "tree.h"
 
 int compare_entries(const struct dirent **a, const struct dirent **b);
-void output_to_txt_file(const char *path, const struct stat *statbuf, int level);
+void output_to_txt_file(const char *path);
 void print_usage(const char *program_name);
 void print_indentation_in_sysout(int level);
-void print_file_info(const char *path, const struct stat *statbuf);
+void print_file_info( const struct stat *statbuf);
 void increment_counters(bool is_dir);
 void process_directory(const char *path, int level, TreeNode *parent);
 void *worker(void *arg);

@@ -1,7 +1,6 @@
 #ifndef TREE_H
 #define TREE_H
 #define MAX_PATH
-#include <pthread.h>
 
 typedef struct TreeNode {
     char *name;

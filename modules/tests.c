@@ -1,9 +1,3 @@
-//
-// Created by Tom Knoblach on 17.12.24.
-//
-//TestCases
-//TODO: add test cases for all terminal options
-//TODO: bei Tests benötigen wir noch free
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,10 +10,6 @@
 #include "h-Files/queue.h"
 #include "h-Files/globals.h"
 #include "h-Files/logic.h"
-//TestCases
-//TODO: add test cases for all terminal options
-//TODO: bei Tests benötigen wir noch free
-
 
 void test_queue_basic() {
     Queue queue;
@@ -39,8 +29,6 @@ void test_queue_basic() {
     printf("Test queue_basic passed.\n");
 }
 
-
-
 void test_queue_empty() {
     Queue queue;
     queue_init(&queue);
@@ -55,9 +43,6 @@ void test_queue_empty() {
     printf("Test queue_empty passed.\n");
 }
 
-
-
-
 void test_option_no_summary() {
     option_show_summary = 0;
 
@@ -70,12 +55,6 @@ void test_option_no_summary() {
     printf("Test option_no_summary passed.\n");
 }
 
-
-
-
-
-#include <sys/stat.h> // Für mkdir
-#include <unistd.h>   // Für rmdir, unlink
 
 void test_process_directory() {
     total_files = 0;
@@ -145,6 +124,7 @@ void test_multithread_processing() {
     rmdir("test_dir");           // Hauptverzeichnis löschen
 
     queue_destroy(&queue);
+
     printf("Test multithread_processing passed.\n");
 }
 

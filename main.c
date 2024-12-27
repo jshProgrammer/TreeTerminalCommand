@@ -15,12 +15,6 @@
 #include "modules/h-Files/tests.h"
 #include "modules/h-Files/tree.h"
 
-
-//TODO: Braum Fragen => sollen wir Segmentierung nutzen von Queue zu Teilqueues bei den Threads, damit diese nicht die komplette Queue blockieren
-// oder sollten wir hier darauf verzichten, weil enqueue/dequeue ja eh nicht lange dauert im Vergleich zu Auslesen des Dateisystems
-
-//TODO: in ReadMe: gcc main.c modules/logic.c modules/tree.c modules/queue.c modules/tests.c modules/globals.c -o TreeTerminalCommand
-
 int main(int argc, char *argv[]) {
     //Tests
     if (argc > 1 && strcmp(argv[1], "--test") == 0) {
@@ -35,9 +29,6 @@ int main(int argc, char *argv[]) {
     int opt;
 
     //TODO: option ignoreCase noch ungenutzt
-
-    //TODO: noch umsetzen: -I | Do not list those files that match the wild-card pattern.
-
 
     // Optionstruktur für getopt_long
     static struct option long_options[] = {
@@ -222,6 +213,3 @@ int main(int argc, char *argv[]) {
 
     return EXIT_SUCCESS;
 }
-
-
-

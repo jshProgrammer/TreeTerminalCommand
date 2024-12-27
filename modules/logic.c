@@ -87,7 +87,7 @@ void generate_csv_output(FILE *file, TreeNode *node) {
     }
 }
 
-void output_to_txt_file(const char *path, const struct stat *statbuf, int level) {
+void output_to_txt_file(const char *path) {
         if (output_file != NULL) {
             FILE *file = fopen(output_file, "a");
             if (!file) {
@@ -116,7 +116,7 @@ void print_usage(const char *program_name) {
     printf("  -r                    Sort output in reverse order\n");
     printf("  -i                    Ignore case when sorting\n");
     printf("  -t                    Sort by last modification time\n");
-    printf("  -u                    Show user name or UID if no name is available\n");
+    printf("  -u                    Show username or UID if no name is available\n");
     printf("  -g                    Show group name or GID if no name is available\n");
     printf("  -p <dir>              Prune (omit) specified directory from the tree\n");
     printf("  --prune <dir>         Prune (omit) specified directory from the tree\n");
@@ -134,9 +134,9 @@ void print_indentation_in_sysout(int level) {
     }
 }
 
-void print_file_info(const char *path, const struct stat *statbuf) {
+void print_file_info(const struct stat *statbuf) {
     if (option_show_file_sizes) {
-        printf(" [%ld bytes]", statbuf->st_size);
+        printf(" [%lld bytes]", statbuf->st_size);
     }
     printf("\n");
 }
@@ -250,13 +250,13 @@ void process_directory(const char *path, int level, TreeNode *parent) {
         }
 
         if (output_file != NULL) {
-            output_to_txt_file(full_path, &statbuf, level);
+            output_to_txt_file(full_path);
         }
 
         print_indentation_in_sysout(level);
         printf("|-- %s", option_show_full_path ? full_path : entry->d_name);
 
-        print_file_info(full_path, &statbuf);
+        print_file_info(&statbuf);
 
         if (option_show_user || option_show_group) {
             printf(" [");

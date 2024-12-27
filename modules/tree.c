@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "h-Files/tree.h"
+
+#include <pthread.h>
+
 #include "h-Files/globals.h"
-#include <stdio.h>
 
 TreeNode *create_node(const char *name, long size, int level, int is_dir) {
     TreeNode *node = malloc(sizeof(TreeNode));
@@ -33,4 +35,3 @@ void free_tree(TreeNode *node) {
     free(node->name);
     free(node);
 }
-
