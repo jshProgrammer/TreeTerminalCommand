@@ -88,7 +88,7 @@ void test_process_directory() {
     fclose(file);
 
     // Verzeichnis verarbeiten
-    process_directory("test_dir", 0);
+    process_directory("test_dir", 0, NULL);
 
     // Assertions
     assert(total_dirs > 1); // Es sollte mindestens ein Unterverzeichnis geben
@@ -170,7 +170,7 @@ void test_prune_directory() {
 
     total_files = 0;
     total_dirs = 1;
-    process_directory("test_prune_dir", 0);
+    process_directory("test_prune_dir", 0, NULL);
     //TODO: Sollte eigentlich bei 2 durchlaufen, ignoriert irgendwas nicht
     assert(total_dirs == 3);
     assert(total_files == 1);

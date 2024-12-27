@@ -36,8 +36,6 @@ int main(int argc, char *argv[]) {
 
     //TODO: option ignoreCase noch ungenutzt
 
-    //TODO: output-json und output-csv noch ohne Funktion
-
     //TODO: noch umsetzen: -I | Do not list those files that match the wild-card pattern.
 
 
@@ -120,37 +118,37 @@ int main(int argc, char *argv[]) {
             break;
             case 'j':
                 option_output_json = 1;
-            if (optarg == NULL) {
-                fprintf(stderr, "Option --output-json requires an argument\n");
-                exit(EXIT_FAILURE);
-            }
-            output_file = optarg;
-            break;
+                if (optarg == NULL) {
+                    fprintf(stderr, "Option --output-json requires an argument\n");
+                    exit(EXIT_FAILURE);
+                }
+                output_file = optarg;
+                break;
             case 'c':
                 option_output_csv = 1;
-            if (optarg == NULL) {
-                fprintf(stderr, "Option --output-csv requires an argument\n");
-                exit(EXIT_FAILURE);
-            }
-            output_file = optarg;
-            break;
+                if (optarg == NULL) {
+                    fprintf(stderr, "Option --output-csv requires an argument\n");
+                    exit(EXIT_FAILURE);
+                }
+                output_file = optarg;
+                break;
             //TODO: add example (./main -o output.txt .) in readme
             case 'o':
                 if (optarg == NULL) {
                     fprintf(stderr, "Option -o requires an argument\n");
                     exit(EXIT_FAILURE);
                 }
-            output_file = optarg;
-            break;
+                output_file = optarg;
+                break;
             case 'F':
                 option_file_limit = atoi(optarg);
-            break;
+                break;
             case 'h':
                 print_usage(argv[0]);
-            return EXIT_SUCCESS;
+                return EXIT_SUCCESS;
             default:
                 print_usage(argv[0]);
-            return EXIT_FAILURE;
+                return EXIT_FAILURE;
         }
     }
 
@@ -210,25 +208,17 @@ int main(int argc, char *argv[]) {
         free(pruned_directories[i]);
     }
 
-    // Baum erstellen und Ausgabe generieren
-    TreeNode *root = NULL;
-
-    if (option_output_json || option_output_csv) {
-        root = build_tree(".", 0);
-        if (!root) {
-            fprintf(stderr, "Failed to build tree.\n");
-            return EXIT_FAILURE;
-        }
-    }
-
     if (option_output_json) {
         FILE *file = fopen(output_file, "w");
-        generate_json_output(file, root, 0);
+        generate_json_output(file, global_root, 0);
     }
     if (option_output_csv) {
         FILE *file = fopen(output_file, "w");
-        generate_csv_output(file, root);
+        generate_csv_output(file, global_root);
     }
+
+    free_tree(global_root);
+    pthread_mutex_destroy(&tree_mutex);
 
     return EXIT_SUCCESS;
 }

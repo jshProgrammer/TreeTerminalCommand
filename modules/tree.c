@@ -16,8 +16,12 @@ TreeNode *create_node(const char *name, long size, int level, int is_dir) {
 }
 
 void add_child(TreeNode *parent, TreeNode *child) {
+    pthread_mutex_lock(&tree_mutex);
+
     parent->children = realloc(parent->children, (parent->child_count + 1) * sizeof(TreeNode *));
     parent->children[parent->child_count++] = child;
+
+    pthread_mutex_unlock(&tree_mutex);
 }
 
 void free_tree(TreeNode *node) {

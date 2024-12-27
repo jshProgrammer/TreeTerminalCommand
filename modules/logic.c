@@ -33,7 +33,6 @@ int compare_entries(const struct dirent **a, const struct dirent **b) {
     return option_reverse_sort ? strcasecmp((*b)->d_name, (*a)->d_name) : strcasecmp((*a)->d_name, (*b)->d_name);
 }
 
-//TODO: use together with print_indentation method below => generalise
 void print_indents_in_file(FILE *file, int indent) {
     for (int i = 0; i < indent; ++i) {
         fprintf(file, "    "); // 4 Leerzeichen pro Ebene
@@ -69,7 +68,7 @@ void generate_json_output(FILE *file, TreeNode *node, int indent) {
     }
 
     if (node->child_count > 0) {
-        fprintf(file, "\n"); // Neue Zeile nach der letzten Kinderausgabe
+        fprintf(file, "\n");
         print_indents_in_file(file, indent + 1);
     }
 
@@ -88,75 +87,7 @@ void generate_csv_output(FILE *file, TreeNode *node) {
     }
 }
 
-//TODO: prüfen, ob man wirklich nochmal extra alles durch iterieren muss oder ob man das in processDirectory inkludieren kann
-TreeNode *build_tree(const char *path, int level) {
-    struct stat statbuf;
-    if (stat(path, &statbuf) == -1) {
-        fprintf(stderr, "Cannot stat '%s': %s\n", path, strerror(errno));
-        return NULL;
-    }
-
-    TreeNode *node = create_node(path, statbuf.st_size, level, S_ISDIR(statbuf.st_mode));
-
-    if (node->is_dir) {
-        DIR *dir = opendir(path);
-        if (!dir) {
-            fprintf(stderr, "Cannot open directory '%s': %s\n", path, strerror(errno));
-            return node;
-        }
-
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != NULL) {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-                continue;
-            }
-
-            char full_path[max_path];
-            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
-
-            TreeNode *child = build_tree(full_path, level + 1);
-            if (child) {
-                add_child(node, child);
-            }
-        }
-        closedir(dir);
-    }
-
-    return node;
-}
-
-void output_to_file_json_csv(TreeNode *root) {
-    if (!root) {
-        fprintf(stderr, "Error: Tree root is NULL.\n");
-        return;
-    }
-
-    FILE *file = output_file ? fopen(output_file, "w") : stdout;
-    if (!file) {
-        perror("Error opening output file");
-        return;
-    }
-
-    if (option_output_json) {
-        generate_json_output(file, root, 0);
-    } else if (option_output_csv) {
-        // Write CSV header
-        fprintf(file, "\"Name\",\"Size\",\"Level\",\"Type\"\n");
-        generate_csv_output(file, root);
-    } else {
-        fprintf(stderr, "No valid output format selected.\n");
-    }
-
-    if (output_file) {
-        fclose(file);
-    }
-}
-
-
-
-//TODO: vlt. hier noch als Parameter zstl den Dateinamen hinzufügen?
-void output_to_file(const char *path, const struct stat *statbuf, int level) {
-
+void output_to_txt_file(const char *path, const struct stat *statbuf, int level) {
         if (output_file != NULL) {
             FILE *file = fopen(output_file, "a");
             if (!file) {
@@ -174,30 +105,30 @@ void output_to_file(const char *path, const struct stat *statbuf, int level) {
 void print_usage(const char *program_name) {
     printf("Usage: %s [options] [directory]\n", program_name);
     printf("Options:\n");
-    printf("  -f            Show full path\n");
-    printf("  -L <n>        Limit the depth of the tree to <n>\n");
-    printf("  -l            Follow symbolic links\n");
-    printf("  -a            Show hidden files\n");
-    printf("  -s            Show file sizes\n");
-    printf("  --noSum       Show no summary :)\n");
-    printf("  -d            List directories only\n");
-    printf("  --dirsfirst   List directories before files\n");
-    printf("  -r            Sort output in reverse order\n");
-    printf("  -i            Ignore case when sorting\n");
-    printf("  -t            Sort by last modification time\n");
-    printf("  -u            Show user name or UID if no name is available\n");
-    printf("  -g            Show group name or GID if no name is available\n");
-    printf("  -p <dir>      Prune (omit) specified directory from the tree\n");
-    printf("  --prune <dir> Prune (omit) specified directory from the tree\n");
-    printf("  --filelimit # Limit descending into directories with more than # entries\n");
+    printf("  -f                    Show full path\n");
+    printf("  -L <n>                Limit the depth of the tree to <n>\n");
+    printf("  -l                    Follow symbolic links\n");
+    printf("  -a                    Show hidden files\n");
+    printf("  -s                    Show file sizes\n");
+    printf("  --noSum               Show no summary :)\n");
+    printf("  -d                    List directories only\n");
+    printf("  --dirsfirst           List directories before files\n");
+    printf("  -r                    Sort output in reverse order\n");
+    printf("  -i                    Ignore case when sorting\n");
+    printf("  -t                    Sort by last modification time\n");
+    printf("  -u                    Show user name or UID if no name is available\n");
+    printf("  -g                    Show group name or GID if no name is available\n");
+    printf("  -p <dir>              Prune (omit) specified directory from the tree\n");
+    printf("  --prune <dir>         Prune (omit) specified directory from the tree\n");
+    printf("  --filelimit #         Limit descending into directories with more than # entries\n");
     //TODO: hier vermutlich noch <file> ergänzen
-    printf("  --output-json Output result in JSON format\n");
-    printf("  --output-csv  Output result in CSV format\n");
-    printf("  -o <file>     Send output to file\n");
-    printf("  -h            Show this help message\n");
+    printf("  --output-json <file>  Output result in JSON format and send to file\n");
+    printf("  --output-csv <file    Output result in CSV format and send to file\n");
+    printf("  -o <file>             Send output to file\n");
+    printf("  -h                    Show this help message\n");
 }
 
-void print_indentation(int level) {
+void print_indentation_in_sysout(int level) {
     for (int i = 0; i < level; ++i) {
         printf("|   ");
     }
@@ -221,7 +152,7 @@ void increment_counters(bool is_dir) {
     pthread_mutex_unlock(&counter_mutex);
 }
 
-void process_directory(const char *path, int level) {
+void process_directory(const char *path, int level, TreeNode *parent) {
     // Check if directory should be pruned => then skip this directory
     for (int i = 0; i < pruned_dir_count; i++) {
         if (strcmp(path, pruned_directories[i]) == 0) {
@@ -237,6 +168,28 @@ void process_directory(const char *path, int level) {
     if (!dir) {
         fprintf(stderr, "Cannot open directory '%s': %s\n", path, strerror(errno));
         return;
+    }
+
+    // Stat-Daten des aktuellen Verzeichnisses abrufen
+    struct stat statbuf;
+    if (stat(path, &statbuf) == -1) {
+        fprintf(stderr, "Cannot stat '%s': %s\n", path, strerror(errno));
+        closedir(dir);
+        return;
+    }
+
+
+    TreeNode *node = NULL;
+    if(option_output_csv || option_output_json) {
+        // Aktuelles Verzeichnis als Knoten erstellen
+        node = create_node(path, statbuf.st_size, level, S_ISDIR(statbuf.st_mode));
+        if (parent) {
+            add_child(parent, node);
+        } else if (level == 0) {
+            pthread_mutex_lock(&tree_mutex);
+            global_root = node; // Root-Knoten setzen, falls es der erste Aufruf ist
+            pthread_mutex_unlock(&tree_mutex);
+        }
     }
 
     // Nutze scandir für optionales Sortieren der Einträge
@@ -274,7 +227,6 @@ void process_directory(const char *path, int level) {
 
     }
 
-
     for (int i = 0; i < count; i++) {
         struct dirent *entry = entries[i];
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
@@ -298,10 +250,10 @@ void process_directory(const char *path, int level) {
         }
 
         if (output_file != NULL) {
-            output_to_file(full_path, &statbuf, level);
+            output_to_txt_file(full_path, &statbuf, level);
         }
 
-        print_indentation(level);
+        print_indentation_in_sysout(level);
         printf("|-- %s", option_show_full_path ? full_path : entry->d_name);
 
         print_file_info(full_path, &statbuf);
@@ -335,9 +287,14 @@ void process_directory(const char *path, int level) {
 
         if (S_ISDIR(statbuf.st_mode)) {
             increment_counters(true);
-            process_directory(full_path, level + 1);
+            process_directory(full_path, level + 1, node);
         } else {
             increment_counters(false);
+            // Dateien können schon zu Baum hinzugefügt werden, Ordner werden bei nächstem Rekursionsschritt hinzugefügt
+            if(option_output_csv || option_output_json) {
+                TreeNode *file_node = create_node(full_path, statbuf.st_size, level+1, 0);
+                add_child(global_root, file_node);
+            }
         }
     }
 
@@ -351,7 +308,8 @@ void *worker(void *arg) {
 
     // Jeder Thread bearbeitet seine eigene Queue
     while (dequeue(path_queue, path, &level)) {
-        process_directory(path, level);
+
+        process_directory(path, level, NULL);
     }
 
     return NULL;
