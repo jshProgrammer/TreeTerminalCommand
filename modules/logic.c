@@ -18,13 +18,6 @@
 #include "h-Files/tree.h"
 #include "h-Files/printConsole.h"
 #include "h-Files/printFile.h"
-
-
-#include "modules/h-Files/logic.h"
-#include "globals.h"
-#include "queue.h"
-#include "printConsole.h"
-#include "printFile.h"
 #include <getopt.h>
 
 
