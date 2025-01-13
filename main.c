@@ -43,8 +43,10 @@ int main(int argc, char *argv[]) {
         {0, 0, 0, 0}
     };
 
-    const char *start_path = (optind < argc) ? argv[optind] : ".";
+    const char *start_path = parse_options(argc, argv);
 
+    /*
+    const char *start_path = (optind < argc) ? argv[optind] : ".";
 
     while ((opt = getopt_long(argc, argv, "fL:lasdritugpPj:c:o:Fh", long_options, NULL)) != -1) {
         if (opt == 0) {
@@ -143,7 +145,7 @@ int main(int argc, char *argv[]) {
                 print_usage(argv[0]);
                 return EXIT_FAILURE;
         }
-    }
+    }*/
 
     if (output_file != NULL) { // Ausgabedatei erstellen/öffnen
         FILE *file = fopen(output_file, "w");

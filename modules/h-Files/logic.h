@@ -14,6 +14,7 @@ void increment_counters(bool is_dir);
 void process_directory(const char *path, int level, TreeNode *parent);
 void *worker(void *arg);
 //void print_directory_summary();
+const char *parse_options(int argc, char *argv[]);
 
 //void generate_json_output(FILE *file, TreeNode *node, int indent);
 //void generate_csv_output(FILE *file, TreeNode *node);

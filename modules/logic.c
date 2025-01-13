@@ -20,6 +20,14 @@
 #include "h-Files/printFile.h"
 
 
+#include "modules/h-Files/logic.h"
+#include "globals.h"
+#include "queue.h"
+#include "printConsole.h"
+#include "printFile.h"
+#include <getopt.h>
+
+
 int compare_entries(const struct dirent **a, const struct dirent **b) {
     if (option_dirs_first) {
         int is_dir_a = (*a)->d_type == DT_DIR;
@@ -333,3 +341,106 @@ void print_directory_summary() {
     }
 }
 */
+
+
+const char *parse_options(int argc, char *argv[]) {
+    int opt;
+
+    static struct option long_options[] = {
+        {"noSum", no_argument, &option_show_summary, 0},
+        {"dirsfirst", no_argument, &option_dirs_first, 1},
+        {"output-json", required_argument, NULL, 'j'},
+        {"output-csv", required_argument, NULL, 'c'},
+        {"filelimit", required_argument, NULL, 'F'},
+        {"prune", no_argument, NULL, 'P'},
+        {0, 0, 0, 0}
+    };
+
+    while ((opt = getopt_long(argc, argv, "fL:lasdritugpPj:c:o:Fh", long_options, NULL)) != -1) {
+        if (opt == 0) {
+            continue;
+        }
+        switch (opt) {
+            case 'f':
+                option_show_full_path = 1;
+                break;
+            case 'L':
+                option_max_depth = atoi(optarg);
+                if (option_max_depth < 0) {
+                    fprintf(stderr, "Invalid depth value: %s\n", optarg);
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case 'l':
+                option_follow_symlinks = 1;
+                break;
+            case 'a':
+                option_show_hidden = 1;
+                break;
+            case 's':
+                option_show_file_sizes = 1;
+                break;
+            case 'd':
+                option_dirs_only = 1;
+                break;
+            case 'r':
+                option_reverse_sort = 1;
+                break;
+            case 'i':
+                option_ignore_case = 1;
+                break;
+            case 't':
+                option_sort_time = 1;
+                break;
+            case 'u':
+                option_show_user = 1;
+                break;
+            case 'g':
+                option_show_group = 1;
+                break;
+            case 'p':
+            case 'P':
+                if (pruned_dir_count < MAX_PRUNED_DIRS) {
+                    if (optarg != NULL && strlen(optarg) > 0) {
+                        char resolved_path[max_path];
+                        if (realpath(optarg, resolved_path) != NULL) {
+                            pruned_directories[pruned_dir_count++] = strdup(resolved_path);
+                        } else {
+                            fprintf(stderr, "Error resolving path: %s\n", optarg);
+                        }
+                    } else {
+                        fprintf(stderr, "Invalid directory path for prune option\n");
+                    }
+                } else {
+                    fprintf(stderr, "Maximum number of pruned directories reached.\n");
+                }
+                break;
+            case 'j':
+                option_output_json = 1;
+                output_file = optarg;
+                break;
+            case 'c':
+                option_output_csv = 1;
+                output_file = optarg;
+                break;
+            case 'o':
+                output_file = optarg;
+                break;
+            case 'F':
+                option_file_limit = atoi(optarg);
+                break;
+            case 'h':
+                print_usage(argv[0]);
+                exit(EXIT_SUCCESS);
+            default:
+                print_usage(argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    if (optind < argc) {
+        return argv[optind];
+    } else {
+        return ".";
+    }
+}
