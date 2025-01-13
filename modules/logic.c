@@ -10,10 +10,14 @@
 #include <sys/types.h>
 #include <pwd.h>   // Für Benutzernamen (UID zu Username)
 #include <grp.h>   // Für Gruppennamen (GID zu Groupname)
+#include <dirent.h>
+
 #include "h-Files/globals.h"
 #include "h-Files/queue.h"
 #include "h-Files/logic.h"
 #include "h-Files/tree.h"
+#include "h-Files/printConsole.h"
+#include "h-Files/printFile.h"
 
 
 int compare_entries(const struct dirent **a, const struct dirent **b) {
@@ -32,13 +36,14 @@ int compare_entries(const struct dirent **a, const struct dirent **b) {
     }
     return option_reverse_sort ? strcasecmp((*b)->d_name, (*a)->d_name) : strcasecmp((*a)->d_name, (*b)->d_name);
 }
-
+/*
 void print_indents_in_file(FILE *file, int indent) {
     for (int i = 0; i < indent; ++i) {
         fprintf(file, "    "); // 4 Leerzeichen pro Ebene
     }
 }
-
+*/
+/*
 void generate_json_output(FILE *file, TreeNode *node, int indent) {
     print_indents_in_file(file, indent);
     if(indent == 0) fprintf(file, "{\n");
@@ -78,7 +83,8 @@ void generate_json_output(FILE *file, TreeNode *node, int indent) {
     print_indents_in_file(file, indent);
     fprintf(file, "}");
 }
-
+*/
+/*
 void generate_csv_output(FILE *file, TreeNode *node) {
    fprintf(file, "\"%s\",%ld,%d,%s\n", node->name, node->size, node->level, node->is_dir ? "directory" : "file");
 
@@ -86,7 +92,8 @@ void generate_csv_output(FILE *file, TreeNode *node) {
         generate_csv_output(file, node->children[i]);
     }
 }
-
+*/
+/*
 void output_to_txt_file(const char *path) {
         if (output_file != NULL) {
             FILE *file = fopen(output_file, "a");
@@ -101,7 +108,8 @@ void output_to_txt_file(const char *path) {
         }
 
 }
-
+*/
+/*
 void print_usage(const char *program_name) {
     printf("Usage: %s [options] [directory]\n", program_name);
     printf("Options:\n");
@@ -127,20 +135,22 @@ void print_usage(const char *program_name) {
     printf("  -o <file>             Send output to file\n");
     printf("  -h                    Show this help message\n");
 }
-
+*/
+/*
 void print_indentation_in_sysout(int level) {
     for (int i = 0; i < level; ++i) {
         printf("|   ");
     }
 }
-
+*/
+/*
 void print_file_info(const struct stat *statbuf) {
     if (option_show_file_sizes) {
         printf(" [%lld bytes]", statbuf->st_size);
     }
     printf("\n");
 }
-
+*/
 // Thread-safe counter increment
 void increment_counters(bool is_dir) {
     pthread_mutex_lock(&counter_mutex);
@@ -314,7 +324,7 @@ void *worker(void *arg) {
 
     return NULL;
 }
-
+/*
 void print_directory_summary() {
     if (option_show_summary) {
         printf("\nSummary:\n");
@@ -322,3 +332,4 @@ void print_directory_summary() {
         printf("Total files: %d\n", total_files);
     }
 }
+*/

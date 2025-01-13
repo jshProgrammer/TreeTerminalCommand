@@ -14,6 +14,8 @@
 #include "modules/h-Files/logic.h"
 #include "modules/h-Files/tests.h"
 #include "modules/h-Files/tree.h"
+#include "modules/h-Files/printConsole.h"
+#include "modules/h-Files/printFile.h"
 
 int main(int argc, char *argv[]) {
     //Tests

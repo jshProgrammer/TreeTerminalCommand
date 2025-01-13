@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -pthread
 TARGET = tree
-SOURCES = main.c modules/logic.c modules/tree.c modules/queue.c modules/tests.c modules/globals.c
+SOURCES = main.c modules/logic.c modules/tree.c modules/queue.c modules/tests.c modules/globals.c modules/printConsole.c modules/printFile.c
 OBJECTS = $(SOURCES:.c=.o)
 
 all: $(TARGET)

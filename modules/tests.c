@@ -10,6 +10,7 @@
 #include "h-Files/queue.h"
 #include "h-Files/globals.h"
 #include "h-Files/logic.h"
+#include "h-Files/printConsole.h"
 
 void test_queue_basic() {
     Queue queue;
