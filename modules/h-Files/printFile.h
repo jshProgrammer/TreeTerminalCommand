@@ -1,7 +1,6 @@
 #ifndef PRINTFILE_H
 #define PRINTFILE_H
 #include "tree.h"
-#include "logic.h"
 #include <stdio.h>
 
 

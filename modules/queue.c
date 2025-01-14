@@ -20,7 +20,7 @@ void enqueue(Queue *q, const char *path, int level) {
     }
 
     strncpy(node->path, path, MAX_PATH-1);
-    node->path[MAX_PATH - 1] = '\0';  // Ensure null-termination
+    node->path[MAX_PATH - 1] = '\0';
     node->level = level;
     node->next = NULL;
 
@@ -42,7 +42,6 @@ int dequeue(Queue *q, char *path, int *level) {
         pthread_cond_wait(&q->cond, &q->lock);
     }
 
-    // Exit if queue is empty and finished
     if (q->front == NULL && q->is_finished) {
         pthread_mutex_unlock(&q->lock);
         return 0;
@@ -59,7 +58,7 @@ int dequeue(Queue *q, char *path, int *level) {
 
     free(node);
     pthread_mutex_unlock(&q->lock);
-    return 1; // Erfolgreich ein Element entnommen
+    return 1;
 }
 
 void queue_destroy(Queue *q) {
@@ -70,7 +69,6 @@ void queue_destroy(Queue *q) {
         free(current);
         current = next;
     }
-    // Explicitly reset queue state
     q->front = q->rear = NULL;
     pthread_mutex_unlock(&q->lock);
 

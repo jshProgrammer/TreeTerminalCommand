@@ -26,7 +26,7 @@ int option_show_group = 0;
 char *output_file = NULL;
 
 int total_files = 0, total_dirs = 1;
-char *pruned_directories[MAX_PRUNED_DIRS]; // Array to store pruned directories
+char *pruned_directories[MAX_PRUNED_DIRS];
 int pruned_dir_count = 0;
 
 const int max_path = 1024;

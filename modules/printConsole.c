@@ -1,24 +1,8 @@
 #include "h-Files/globals.h"
-#include "h-Files/queue.h"
-#include "h-Files/logic.h"
-#include "h-Files/tree.h"
 #include "h-Files/printConsole.h"
-#include "h-Files/printFile.h"
-#include "h-Files/tests.h"
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <sys/types.h>
-#include <pwd.h>
-#include <grp.h>
-#include <dirent.h>
 
 
 void print_usage(const char *program_name) {
@@ -40,7 +24,6 @@ void print_usage(const char *program_name) {
     printf("  -p <dir>              Prune (omit) specified directory from the tree\n");
     printf("  --prune <dir>         Prune (omit) specified directory from the tree\n");
     printf("  --filelimit #         Limit descending into directories with more than # entries\n");
-    //TODO: hier vermutlich noch <file> ergänzen
     printf("  --output-json <file>  Output result in JSON format and send to file\n");
     printf("  --output-csv <file    Output result in CSV format and send to file\n");
     printf("  -o <file>             Send output to file\n");

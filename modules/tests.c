@@ -22,9 +22,9 @@ void test_queue_basic() {
     int level;
     int result = dequeue(&queue, path, &level);
 
-    assert(result == 1); // Erfolgreiches Dequeue
-    assert(strcmp(path, "/test/path") == 0); // Pfad überprüfen
-    assert(level == 1); // Level überprüfen
+    assert(result == 1);
+    assert(strcmp(path, "/test/path") == 0);
+    assert(level == 1);
 
     queue_destroy(&queue);
     printf("Test queue_basic passed.\n");
@@ -38,7 +38,7 @@ void test_queue_empty() {
     int level;
     int result = dequeue(&queue, path, &level);
 
-    assert(result == 0); // Queue ist leer
+    assert(result == 0);
     queue_destroy(&queue);
 
     printf("Test queue_empty passed.\n");
@@ -47,37 +47,32 @@ void test_queue_empty() {
 void test_option_no_summary() {
     option_show_summary = 0;
 
-    // Simuliere die Funktion print_directory_summary
     total_files = 10;
     total_dirs = 5;
 
     printf("Testing --noSum option:\n");
-    print_directory_summary(); // Sollte nichts ausgeben
+    print_directory_summary();
     printf("Test option_no_summary passed.\n");
 }
 
 
 void test_process_directory() {
     total_files = 0;
-    total_dirs = 1; // Startwert
+    total_dirs = 1;
 
-    // Temporäres Testverzeichnis erstellen
     mkdir("test_dir", 0777);
     mkdir("test_dir/subdir", 0777);
     FILE *file = fopen("test_dir/file.txt", "w");
     fclose(file);
 
-    // Verzeichnis verarbeiten
     process_directory("test_dir", 0, NULL);
 
-    // Assertions
-    assert(total_dirs > 1); // Es sollte mindestens ein Unterverzeichnis geben
-    assert(total_files > 0); // Es sollte mindestens eine Datei geben
+    assert(total_dirs > 1);
+    assert(total_files > 0);
 
-    // Temporäre Testdateien und Verzeichnisse entfernen
-    unlink("test_dir/file.txt"); // Datei löschen
-    rmdir("test_dir/subdir");    // Unterverzeichnis löschen
-    rmdir("test_dir");           // Hauptverzeichnis löschen
+    unlink("test_dir/file.txt");
+    rmdir("test_dir/subdir");
+    rmdir("test_dir");
 
     printf("Test process_directory passed.\n");
 }
@@ -86,17 +81,14 @@ void test_multithread_processing() {
     Queue queue;
     queue_init(&queue);
 
-    // Temporäres Testverzeichnis erstellen
-    mkdir("test_dir", 0777); // 0777 for full access
+    mkdir("test_dir", 0777);
     mkdir("test_dir/subdir", 0777);
     FILE *file = fopen("test_dir/file.txt", "w");
     fclose(file);
 
-    // Verzeichnis in die Queue einfügen
     enqueue(&queue, "test_dir", 0);
 
-    // Threads erstellen
-    pthread_t threads[4]; // 4 Threads für den Test
+    pthread_t threads[4];
     for (int i = 0; i < 4; i++) {
         if (pthread_create(&threads[i], NULL, worker, &queue) != 0) {
             perror("Failed to create thread");
@@ -104,25 +96,21 @@ void test_multithread_processing() {
         }
     }
 
-    // Threads signalisieren, dass die Queue abgearbeitet werden kann
     pthread_mutex_lock(&queue.lock);
     queue.is_finished = 1;
     pthread_cond_broadcast(&queue.cond);
     pthread_mutex_unlock(&queue.lock);
 
-    // Auf alle Threads warten
     for (int i = 0; i < 4; i++) {
         pthread_join(threads[i], NULL);
     }
 
-    // Assertions
-    assert(total_dirs > 1); // Es sollte mindestens ein Unterverzeichnis geben
-    assert(total_files > 0); // Es sollte mindestens eine Datei geben
+    assert(total_dirs > 1);
+    assert(total_files > 0);
 
-    // Temporäre Testdateien und Verzeichnisse entfernen
-    unlink("test_dir/file.txt"); // Datei löschen
-    rmdir("test_dir/subdir");    // Unterverzeichnis löschen
-    rmdir("test_dir");           // Hauptverzeichnis löschen
+    unlink("test_dir/file.txt");
+    rmdir("test_dir/subdir");
+    rmdir("test_dir");
 
     queue_destroy(&queue);
 
@@ -134,7 +122,7 @@ void test_invalid_directory() {
     const char *invalid_path = "/invalid/path";
 
     int result = stat(invalid_path, &statbuf);
-    assert(result == -1); // Sollte fehlschlagen
+    assert(result == -1);
 
     printf("Test invalid_directory passed.\n");
 }

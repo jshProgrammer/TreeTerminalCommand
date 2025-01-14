@@ -1,11 +1,11 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 #include <sys/_pthread/_pthread_mutex_t.h>
-
 #include "tree.h"
+
 extern const int max_path;
 #define MAX_INDENT 128
-#define MAX_THREADS 16   // Amount of threads
+#define MAX_THREADS 16
 #define MAX_PRUNED_DIRS 16
 
 extern int option_show_full_path;
@@ -27,13 +27,12 @@ extern int option_show_group;
 extern char *output_file;
 
 extern int  total_files, total_dirs;
-extern char *pruned_directories[MAX_PRUNED_DIRS]; // Array to store pruned directories
+extern char *pruned_directories[MAX_PRUNED_DIRS];
 extern int pruned_dir_count;
 
 extern TreeNode *global_root;
 
 extern pthread_mutex_t counter_mutex;
 extern pthread_mutex_t tree_mutex;
-
 
 #endif
