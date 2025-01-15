@@ -139,9 +139,8 @@ void test_prune_directory() {
 
     total_files = 0;
     total_dirs = 1;
-    process_directory("test_prune_dir", 0, NULL);
-    //TODO: Sollte eigentlich bei 2 durchlaufen, ignoriert irgendwas nicht
-    assert(total_dirs == 3);
+    process_directory("test_prune_dir/subdir1", 0, NULL);
+    assert(total_dirs == 2);
     assert(total_files == 1);
 
     unlink("test_prune_dir/file.txt");

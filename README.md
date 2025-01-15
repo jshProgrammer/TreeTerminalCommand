@@ -13,13 +13,38 @@ This project is an implementation of a limited version of the `tree` command in 
 
 ## Requirements
 - GCC compiler
-- Linux environment
+- Linux or a MacOs environment
 
 ## Build and Run Instructions
 ### Prerequisites
 Ensure you have the following installed:
 - GCC
 - Make
+
+You can check these requierments with the following commands in your terminal:
+```bash
+gcc --version
+
+make --version
+```
+In case you haven't installed these programms you can download and install them via these two terminal commands:
+
+On Mac use:
+```bash
+brew install gcc make
+```
+On a Linux systems please use:
+```bash
+sudo apt update
+```
+```bash
+sudo apt install build-essential
+```
+
+Now you can check again with the commands from the beginning thate everything went right.
+
+
+
 
 ### Clone the Repository
 ```bash
@@ -37,9 +62,23 @@ Run the program with appropriate command-line arguments:
 ```bash
 ./tree [options] [directory_path]
 ```
-Example:
+Examples:
+
+If you want to get an overview about the funtions simple use:
+```bash
+./tree -h
+```
+For limiting the depth of the tree: 
 ```bash
 ./tree -L 2
+```
+If you want to save the terminal result in a .txt file: 
+```bash
+./main -o output.txt
+```
+To prune for example a specific directory use: 
+```bash
+./main --prune ./cmake-build-debug
 ```
 
 ### Clean the Build
@@ -58,7 +97,6 @@ make clean
 - `-d`: List directories only.
 - `--dirsfirst`: List directories before files.
 - `-r`: Sort output in reverse order.
-- `-i`: Ignore case when sorting.
 - `-t`: Sort by last modification time.
 - `-u`: Show username or UID if no name is available.
 - `-g`: Show group name or GID if no name is available.

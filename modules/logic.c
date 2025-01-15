@@ -245,9 +245,6 @@ const char *parse_options(int argc, char *argv[]) {
             case 'r':
                 option_reverse_sort = 1;
                 break;
-            case 'i':
-                option_ignore_case = 1;
-                break;
             case 't':
                 option_sort_time = 1;
                 break;

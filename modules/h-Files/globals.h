@@ -17,7 +17,6 @@ extern int option_show_summary;
 extern int option_dirs_first;
 extern int option_reverse_sort;
 extern int option_dirs_only;
-extern int option_ignore_case;
 extern int option_file_limit;
 extern int option_sort_time;
 extern int option_output_json;

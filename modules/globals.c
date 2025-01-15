@@ -16,7 +16,6 @@ int option_show_summary = 1;
 int option_dirs_first = 0;
 int option_reverse_sort = 0;
 int option_dirs_only = 0;
-int option_ignore_case = 0;
 int option_file_limit = -1;
 int option_sort_time = 0;
 int option_output_json = 0;

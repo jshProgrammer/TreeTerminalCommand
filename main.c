@@ -28,10 +28,6 @@ int main(int argc, char *argv[]) {
 
     int opt;
 
-    //TODO: option ignoreCase removen
-    //TODO: Fehler in Test Case lösen
-    //TODO: add example (./main --prune ./cmake-build-debug) in readme
-    //TODO: add example (./main -o output.txt .) in readme
 
 
     const char *start_path = parse_options(argc, argv);
