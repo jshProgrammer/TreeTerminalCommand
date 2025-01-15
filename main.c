@@ -26,9 +26,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    int opt;
-
-
 
     const char *start_path = parse_options(argc, argv);
 

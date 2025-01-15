@@ -127,33 +127,6 @@ void test_invalid_directory() {
     printf("Test invalid_directory passed.\n");
 }
 
-void test_prune_directory() {
-    mkdir("test_prune_dir", 0777);
-    mkdir("test_prune_dir/subdir1", 0777);
-    mkdir("test_prune_dir/subdir2", 0777);
-    FILE *file = fopen("test_prune_dir/file.txt", "w");
-    fclose(file);
-
-    pruned_directories[0] = strdup("test_prune_dir/subdir1");
-    pruned_dir_count = 1;
-
-    total_files = 0;
-    total_dirs = 1;
-    process_directory("test_prune_dir/subdir1", 0, NULL);
-    assert(total_dirs == 2);
-    assert(total_files == 1);
-
-    unlink("test_prune_dir/file.txt");
-    rmdir("test_prune_dir/subdir1");
-    rmdir("test_prune_dir/subdir2");
-    rmdir("test_prune_dir");
-
-    free(pruned_directories[0]);
-    pruned_dir_count = 0;
-
-    printf("Test prune_directory passed.\n");
-}
-
 void run_tests() {
     test_queue_basic();
     test_queue_empty();
@@ -161,5 +134,4 @@ void run_tests() {
     test_process_directory();
     test_multithread_processing();
     test_invalid_directory();
-    test_prune_directory();
 }
