@@ -74,11 +74,11 @@ For limiting the depth of the tree:
 ```
 If you want to save the terminal result in a .txt file: 
 ```bash
-./main -o output.txt
+./tree -o output.txt
 ```
 To prune for example a specific directory use: 
 ```bash
-./main --prune ./cmake-build-debug
+./tree --prune ./cmake-build-debug
 ```
 
 ### Clean the Build
